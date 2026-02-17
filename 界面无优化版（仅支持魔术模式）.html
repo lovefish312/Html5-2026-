@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026春晚魔术计算器 · 界面无优化版</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: "华文琥珀", "微软雅黑", sans-serif; }
+  body {
+    background: linear-gradient(135deg, #8B0000, #DC143C, #FF4500);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  /* 舞台灯光背景效果 */
+  body::before{
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('https://picsum.photos/id/1048/1920/1080') center/cover no-repeat;
+    opacity: 0.15;
+    z-index: -1;
+    filter: blur(2px);
+  }
+  .calc-container {
+    text-align: center;
+    background: rgba(0,0,0,0.85);
+    padding: 30px;
+    border-radius: 25px;
+    border: 3px solid #FFD700;
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5), inset 0 0 20px rgba(255,255,255,0.1);
+  }
+  .title {
+    color: #FFD700;
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #FFD700;
+  }
+  .calc {
+    background: #222;
+    padding: 25px;
+    border-radius: 20px;
+    border: 2px solid #FFA500;
+  }
+  .screen {
+    background: #000;
+    color: #00FF00;
+    font-family: "Courier New", monospace;
+    font-size: 42px;
+    text-align: right;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    height: 100px;
+    line-height: 60px;
+    border: 2px solid #FFA500;
+    box-shadow: inset 0 0 15px rgba(0,255,0,0.3);
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .btn {
+    padding: 22px 0;
+    font-size: 26px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #444, #222);
+    color: #FFF;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 5px 0 #111, inset 0 -3px 5px rgba(0,0,0,0.5);
+  }
+  .btn:hover {
+    background: linear-gradient(145deg, #555, #333);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 0 #111, inset 0 -3px 5px rgba(0,0,0,0.5);
+  }
+  .btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 0 #111, inset 0 -1px 3px rgba(0,0,0,0.5);
+  }
+  .btn.op {
+    background: linear-gradient(145deg, #FF8C00, #FF6347);
+    color: #FFF;
+    box-shadow: 0 5px 0 #CC5500, inset 0 -3px 5px rgba(0,0,0,0.3);
+  }
+  .btn.op:hover {
+    background: linear-gradient(145deg, #FFA500, #FF7F50);
+    box-shadow: 0 3px 0 #CC5500, inset 0 -3px 5px rgba(0,0,0,0.3);
+  }
+  .btn.func {
+    background: linear-gradient(145deg, #696969, #2F4F4F);
+    color: #FFF;
+    box-shadow: 0 5px 0 #2F4F4F, inset 0 -3px 5px rgba(0,0,0,0.3);
+  }
+  .btn.func:hover {
+    background: linear-gradient(145deg, #778899, #4682B4);
+    box-shadow: 0 3px 0 #2F4F4F, inset 0 -3px 5px rgba(0,0,0,0.3);
+  }
+  .btn.zero {
+    grid-column: span 2;
+    border-radius: 40px;
+  }
+</style>
+</head>
+<body>
+  <div class="calc-container">
+    <div class="title">2026央视春晚 · 魔术计算器</div>
+    <div class="calc">
+      <div class="screen" id="screen">0</div>
+      <div class="buttons">
+        <button class="btn func" onclick="clr()">AC</button>
+        <button class="btn func" onclick="del()">⌫</button>
+        <button class="btn func" onclick="op('%')">%</button>
+        <button class="btn op" onclick="op('/')">÷</button>
+
+        <button class="btn" onclick="num('7')">7</button>
+        <button class="btn" onclick="num('8')">8</button>
+        <button class="btn" onclick="num('9')">9</button>
+        <button class="btn op" onclick="op('*')">×</button>
+
+        <button class="btn" onclick="num('4')">4</button>
+        <button class="btn" onclick="num('5')">5</button>
+        <button class="btn" onclick="num('6')">6</button>
+        <button class="btn op" onclick="op('-')">-</button>
+
+        <button class="btn" onclick="num('1')">1</button>
+        <button class="btn" onclick="num('2')">2</button>
+        <button class="btn" onclick="num('3')">3</button>
+        <button class="btn op" onclick="op('+')">+</button>
+
+        <button class="btn zero" onclick="num('0')">0</button>
+        <button class="btn" onclick="num('.')">.</button>
+        <button class="btn op" onclick="eq()">=</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let screen = document.getElementById('screen');
+  let current = '0';
+  let first = null;
+  let oper = null;
+  let stage = 0; // 0=正常 1=输完4位数 2=输完5位数 3=魔术盲按
+  let target = 0;
+
+  function show(){ screen.textContent = current; }
+
+  function clr(){
+    current = '0'; first = null; oper = null; stage = 0; target = 0; show();
+  }
+  function del(){
+    current = current.length > 1 ? current.slice(0,-1) : '0'; show();
+  }
+  function num(n){
+    if(stage === 3){
+      // 盲按模式：只显示补数，不乱跳
+      let need = target - first;
+      current = need.toString();
+      show();
+      return;
+    }
+    if(current === '0') current = n;
+    else current += n;
+    show();
+  }
+  function op(o){
+    if(stage === 3) return;
+    first = parseFloat(current);
+    oper = o;
+    current = '0';
+    stage = (stage === 0) ? 1 : 2;
+    // 输完 4位+5位 再按+ → 进入魔术
+    if(stage === 2 && oper === '+'){
+      target = getMagicNumber();
+      stage = 3;
+    }
+    show();
+  }
+  function eq(){
+    if(stage !== 3) return;
+    current = target.toString();
+    stage = 0;
+    show();
+  }
+
+  // 生成：月(1-2) + 日(2) + 时(2) + 分(2) → 共7~8位
+  function getMagicNumber(){
+    let d = new Date();
+    let m = d.getMonth() + 1;
+    let day = d.getDate().toString().padStart(2,'0');
+    let h = d.getHours().toString().padStart(2,'0');
+    let min = d.getMinutes().toString().padStart(2,'0');
+    return parseInt(m + day + h + min);
+  }
+</script>
+</body>
+</html>

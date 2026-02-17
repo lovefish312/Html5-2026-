@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026春晚魔术计算器 · 可切换模式</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  body {
+    background: #f7f7f7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .calc-app {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  }
+  .app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 20px 10px;
+    background: #ffffff;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .back-icon {
+    width: 24px;
+    height: 24px;
+    color: #333;
+  }
+  .tab-nav {
+    display: flex;
+    gap: 30px;
+  }
+  .tab {
+    font-size: 24px;
+    color: #333;
+    font-weight: 500;
+    padding-bottom: 8px;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active {
+    border-color: #ff6a00;
+    color: #222;
+  }
+  .header-right {
+    font-size: 20px;
+    color: #333;
+    cursor: pointer;
+  }
+  .screen-area {
+    padding: 40px 20px 20px;
+    text-align: right;
+    font-size: 56px;
+    color: #000000;
+    min-height: 160px;
+    background: #ffffff;
+  }
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 20px;
+    background: #ffffff;
+  }
+  .key {
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    border: none;
+    font-size: 28px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    /* 修复点击蓝色方框 */
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .key:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  .key.func {
+    background: #f8f8f8;
+    color: #ff6a00;
+  }
+  .key.num {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #e0e0e0;
+  }
+  .key.op {
+    background: #ffffff;
+    color: #ff6a00;
+    border: 1px solid #e0e0e0;
+  }
+  .key.equals {
+    background: #ff6a00;
+    color: #ffffff;
+    grid-column: span 1;
+    border-radius: 50%;
+  }
+  .key.special {
+    background: #ffffff;
+    color: #ff6a00;
+    border: 1px solid #e0e0e0;
+  }
+  /* 修复按钮聚焦时的蓝色边框 */
+  .key:focus {
+    outline: none;
+  }
+</style>
+</head>
+<body>
+  <div class="calc-app">
+    <div class="app-header">
+      <div class="header-left">
+        <div class="back-icon">↵⇤</div>
+        <div class="tab-nav">
+          <div class="tab active">计算</div>
+          <div class="tab">换算</div>
+        </div>
+      </div>
+      <div class="header-right" onclick="toggleMode()">⋮</div>
+    </div>
+    <div class="screen-area" id="screen">0</div>
+    <div class="keypad">
+      <button class="key func" onclick="clr()">AC</button>
+      <button class="key func" onclick="del()">⌦</button>
+      <button class="key func" onclick="op('%')">%</button>
+      <button class="key op" onclick="op('/')">÷</button>
+
+      <button class="key num" onclick="num('7')">7</button>
+      <button class="key num" onclick="num('8')">8</button>
+      <button class="key num" onclick="num('9')">9</button>
+      <button class="key op" onclick="op('*')">×</button>
+
+      <button class="key num" onclick="num('4')">4</button>
+      <button class="key num" onclick="num('5')">5</button>
+      <button class="key num" onclick="num('6')">6</button>
+      <button class="key op" onclick="op('-')">-</button>
+
+      <button class="key num" onclick="num('1')">1</button>
+      <button class="key num" onclick="num('2')">2</button>
+      <button class="key num" onclick="num('3')">3</button>
+      <button class="key op" onclick="op('+')">+</button>
+
+      <button class="key special" onclick="num('²')">x²</button>
+      <button class="key num" onclick="num('0')">0</button>
+      <button class="key num" onclick="num('.')">.</button>
+      <button class="key equals" onclick="eq()">=</button>
+    </div>
+  </div>
+
+<script>
+  let screen = document.getElementById('screen');
+  let current = '0';
+  let first = null;
+  let oper = null;
+  let stage = 0; // 0=正常 1=输完4位数 2=输完5位数 3=魔术盲按
+  let target = 0;
+  let isMagicMode = true; // 初始为魔术模式
+
+  function show(){ screen.textContent = current; }
+
+  function clr(){
+    current = '0'; first = null; oper = null; stage = 0; target = 0; show();
+  }
+  function del(){
+    current = current.length > 1 ? current.slice(0,-1) : '0'; show();
+  }
+  function num(n){
+    if(isMagicMode && stage === 3){
+      let need = target - first;
+      current = need.toString();
+      show();
+      return;
+    }
+    if(current === '0' && n !== '.') current = n;
+    else if(n === '.' && current.includes('.')) return; // 防止重复输入小数点
+    else current += n;
+    show();
+  }
+  function op(o){
+    if(isMagicMode){
+      if(stage === 3) return;
+      first = parseFloat(current);
+      oper = o;
+      current = '0';
+      stage = (stage === 0) ? 1 : 2;
+      if(stage === 2 && oper === '+'){
+        target = getMagicNumber();
+        stage = 3;
+      }
+    } else {
+      // 普通模式：先计算上一步，再记录新运算符
+      if(first !== null && oper !== null) {
+        let second = parseFloat(current);
+        let res;
+        switch(oper){
+          case '+': res = first + second; break;
+          case '-': res = first - second; break;
+          case '*': res = first * second; break;
+          case '/': res = first / second; break;
+          case '%': res = first % second; break;
+          default: res = second;
+        }
+        current = res.toString();
+        first = res;
+      } else {
+        first = parseFloat(current);
+      }
+      oper = o;
+      current = '0';
+    }
+    show();
+  }
+  function eq(){
+    if(isMagicMode){
+      if(stage !== 3) return;
+      current = target.toString();
+      stage = 0;
+    } else {
+      // 普通模式：执行计算
+      if(first === null || oper === null) return;
+      let second = parseFloat(current);
+      let res;
+      switch(oper){
+        case '+': res = first + second; break;
+        case '-': res = first - second; break;
+        case '*': res = first * second; break;
+        case '/': res = first / second; break;
+        case '%': res = first % second; break;
+        default: res = second;
+      }
+      current = res.toString();
+      first = null;
+      oper = null;
+    }
+    show();
+  }
+
+  function getMagicNumber(){
+    let d = new Date();
+    let m = d.getMonth() + 1;
+    let day = d.getDate().toString().padStart(2,'0');
+    let h = d.getHours().toString().padStart(2,'0');
+    let min = d.getMinutes().toString().padStart(2,'0');
+    return parseInt(m + day + h + min);
+  }
+
+  function toggleMode(){
+    isMagicMode = !isMagicMode;
+    clr(); // 清空并重置状态
+    alert(isMagicMode ? "已切换到魔术模式" : "已切换到普通计算器模式");
+  }
+</script>
+</body>
+</html>
